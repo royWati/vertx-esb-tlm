@@ -1,0 +1,7 @@
+vertxServicePorts:
+    templatePorts: 7820
+    servicePorts: 7821
+
+templates:
+    location: tlm-templates
+    leg-manager-file: /leg-managers.json
