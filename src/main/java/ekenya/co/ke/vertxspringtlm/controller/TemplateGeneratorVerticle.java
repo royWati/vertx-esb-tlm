@@ -15,6 +15,10 @@ import org.springframework.stereotype.Component;
 
 import static ekenya.co.ke.vertxspringtlm.services.TemplateConfigurationImpl.CREATE_TLM_TEMPLATE;
 
+
+/**
+ * @Version 1.0
+ */
 @Component
 public class TemplateGeneratorVerticle extends AbstractVerticle {
 

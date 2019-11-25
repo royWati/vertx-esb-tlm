@@ -8,7 +8,9 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 
 import java.util.List;
-
+/**
+ * @Version 1.0
+ */
 public interface TemplateConfiguration {
 
     Future<JsonObject> createTemplate(LegWrapper legWrapper);

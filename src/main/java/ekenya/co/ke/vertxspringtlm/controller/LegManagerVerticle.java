@@ -2,18 +2,37 @@ package ekenya.co.ke.vertxspringtlm.controller;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.logging.Logger;
+
 import static ekenya.co.ke.vertxspringtlm.controller.TemplateGeneratorVerticle.esbResponse;
 import static ekenya.co.ke.vertxspringtlm.services.LegProcessorImpl.ASYNC_HANDLER_GATEWAY;
+import static ekenya.co.ke.vertxspringtlm.services.LegProcessorImpl.INTIATE_TLM_MATRIX;
 
+/**
+ * @Version 1.0
+ *
+ * TODO:: HOW TO HANDLE CUSTOM MESSAGE RESPONSES ON THE RESPONSE
+ * TODO:: IMPLEMENT THE CALLBACK FEATURE TO THE TLM SERVICE
+ * TODO:: CREATE A DEDICATE LINE OF COMMUNICATION BETWEEN THE TLM AND THE ESB i.e HTTP RESPONSE SOCKETS
+ *
+ * {
+ *     "serviceName":"service-name",
+ *     "tlmTransactionRefNo": "TLM-TRANSACTION-REFNO",
+ *     "requestBody":{
+ *         "key":"value"
+ *     }
+ * }
+ */
 @Component
 public class LegManagerVerticle extends AbstractVerticle {
-
+    private final static Logger logger = Logger.getLogger(LegManagerVerticle.class.getName());
     @Value("${vertxServicePorts.servicePorts}")
     private int servicePort;
 
@@ -50,6 +69,15 @@ public class LegManagerVerticle extends AbstractVerticle {
     }
 
     private void RouteTemplateGenerator(RoutingContext routingContext) {
-        vertx.eventBus().send(ASYNC_HANDLER_GATEWAY,"",event -> esbResponse(routingContext,event));
+
+        JsonObject requestJsonObject = routingContext.getBodyAsJson();
+        String legName = routingContext.request().getParam("legName");
+
+        logger.info("processing leg service request...");
+
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.put("requestFields",requestJsonObject);
+        jsonObject.put("legManager",legName);
+        vertx.eventBus().send(INTIATE_TLM_MATRIX,jsonObject,event -> esbResponse(routingContext,event));
     }
 }

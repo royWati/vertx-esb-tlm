@@ -5,3 +5,17 @@ vertxServicePorts:
 templates:
     location: tlm-templates
     leg-manager-file: /leg-managers.json
+
+esb:
+    connectionUrl: http://localhost:7922/esb/process/tlm-service
+eureka:
+    client:
+        serviceUrl:
+            defaultZone: http://localhost:8761/eureka
+        instance:
+        preferIpAddress: true
+spring:
+    application:
+        name: vertx-spring-tlm
+    redis:
+      database: 5

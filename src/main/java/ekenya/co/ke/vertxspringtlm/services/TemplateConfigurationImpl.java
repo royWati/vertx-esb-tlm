@@ -22,7 +22,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Logger;
-
+/**
+ * @Version 1.0
+ */
 @Component
 public class TemplateConfigurationImpl extends AbstractVerticle implements TemplateConfiguration {
 
