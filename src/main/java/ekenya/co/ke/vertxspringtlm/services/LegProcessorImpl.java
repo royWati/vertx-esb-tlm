@@ -11,6 +11,7 @@ import ekenya.co.ke.vertxspringtlm.dao.redis.TransactionRecorder;
 import ekenya.co.ke.vertxspringtlm.dao.wrapper.CustomResponse;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -151,6 +152,8 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
 
         Future<JsonObject> future = Future.future();
 
+        long transactionId = 0;
+
         // check if the service exists in the system
         String legName = requestObject.getString("legManager");
         JsonObject requestObjectFields = requestObject.getJsonObject("requestFields");
@@ -194,6 +197,8 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
 
                     TransactionRecorder transactionRecorder = GENERATE_TRANSACTION_RECORD(requestObjectFields,
                             redisProcessor);
+
+                    transactionId = transactionRecorder.getTransactionId();
                    logger.info("transaction record stored..."+transactionRecorder);
 
                     /**
@@ -359,6 +364,15 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
             JsonObject jsonObject = JsonObject.mapFrom(customResponse);
 
             future.complete(jsonObject);
+        }
+
+        TransactionRecorder transactionRecorder = redisProcessor.findTransactionRecord(transactionId);
+
+        try{
+            logger.info("final transaction recorded entity..."+
+                    new ObjectMapper().writeValueAsString(transactionRecorder));
+        }catch (Exception e){
+            logger.info(e.getMessage());
         }
         return future;
     }
@@ -583,6 +597,9 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
              */
             List<ResponseEntity<String>> entityList = new ArrayList<>();
             try {
+                logger.info("connection..."+esbConnectionurl);
+                logger.info("entityt..."+jsonObject.toString());
+
                 ResponseEntity<String> response = restTemplate.postForEntity(esbConnectionurl,
                         entity,String.class);
                 entityList.add(response);
@@ -652,6 +669,20 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
             String storeName = parameters[2];
             String key = parameters[3];
 
+            /**
+             * from the previous commits, the data we were processing contained the json value
+             *
+             * we want to be able to process data found inside a jsonObject...
+             *
+             * value present in a json object will look as follows
+             *
+             * $jsonObject1_@_$jsonObject2_@_ ...$jsonObjectN_@_jsonValue
+             *
+             * notice that all the json objects contain the $ symbol...we use this to check if the value
+             *
+             * is json or not...
+             * the key is automatically the last value String
+             */
             logger.info("key..."+key);
             String value = "";
 
@@ -661,7 +692,33 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
                 if (dataStore.getStoreId()==Integer.parseInt(stepId) &&
                         storeName.equals(dataStore.getStore())){
 
-                    value = String.valueOf(storeObject.getValue(key));
+
+                    if (key.contains("$")){
+                        JsonObject activeJsonObject = storeObject;
+
+                        String[] keyArray = key.split("_@_"); // all the json object keys present in the string
+                        String finalValue = keyArray[keyArray.length-1]; // key to retrieve data
+
+                        for (String s : keyArray){
+                            if (s.contains("$")){
+                                String keyName = s.replace("$","");
+                                activeJsonObject = activeJsonObject.getJsonObject(keyName);
+                            }
+                        }
+
+                        /**
+                         * after looping through the json, we have the activeJsonObject contain
+                         * the JsonObject that we need to fetch the value from
+                         *
+                         * hence we use the finalValue to retrieve the information that we need
+                         */
+
+                        value = String.valueOf(activeJsonObject.getValue(finalValue));
+                    }else{
+                        value = String.valueOf(storeObject.getValue(key));
+                    }
+
+
                 }
             }
             return value;
