@@ -1,0 +1,15 @@
+[
+  {
+    "procedureName": "SP_TEST",
+    "parameters": [
+      {
+        "originatorField": "my_name",
+        "destinationField": "IV_FIELD2"
+      },
+      {
+        "originatorField": "your_name",
+        "destinationField": "IV_FIELD3"
+      }
+    ]
+  }
+]

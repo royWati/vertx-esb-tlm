@@ -19,3 +19,4 @@ spring:
         name: vertx-spring-tlm
     redis:
       database: 5
+      host: localhost

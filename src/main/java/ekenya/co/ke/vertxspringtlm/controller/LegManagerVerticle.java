@@ -58,14 +58,13 @@ public class LegManagerVerticle extends AbstractVerticle {
                 .requestHandler(router::accept)
                 .listen(servicePort,event -> {
                     if (event.succeeded()){
+                        logger.info("server running on port ... "+servicePort);
                         startFuture.isComplete();
                     }
                     else{
                         startFuture.fail(event.cause());
                     }
                 });
-
-
     }
 
     private void RouteTemplateGenerator(RoutingContext routingContext) {

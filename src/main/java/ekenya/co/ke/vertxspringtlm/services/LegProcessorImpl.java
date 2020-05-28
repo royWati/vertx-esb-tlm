@@ -1,5 +1,6 @@
 package ekenya.co.ke.vertxspringtlm.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import ekenya.co.ke.vertxspringtlm.dao.DataStore;
@@ -12,6 +13,7 @@ import ekenya.co.ke.vertxspringtlm.dao.wrapper.CustomResponse;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -162,6 +164,9 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
 
         LegManager legManager = GET_LEG_MANAGER(legName);
 
+
+        JsonObject finalResponseObject = new JsonObject();
+
         try {
             logger.info(new ObjectMapper().writeValueAsString(legManager));
         }catch (Exception e ){
@@ -229,6 +234,10 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
                     boolean failedLeg = false;
 
                     logger.info("leg transaction starting...");
+
+                    int failed_processing_flag = 0;
+
+
                     while (!finalLeg){
 
                         LegBody legBody = GET_LEG_BODY(legConfigurationManager.getBody(),position);
@@ -285,6 +294,9 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
 
                                 position = handler.getStepId();
                                 finalLeg = handler.isFinalLeg();
+
+                                logger.info("next handler position..."+position);
+                                logger.info("next handler position..."+position);
                             }else if (!wasAnEsbSuccess && handlerId !=0){
                                 logger.info("esb fail and handler found...");
                                 ResponseHandler handler = GET_RESPONSE_HANDLER(handlerId,
@@ -308,13 +320,23 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
                                 logger.info("serious failure...");
                                 CustomResponse customResponse = new CustomResponse();
                                 customResponse.setLegStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
-                                customResponse.setLegMessage("tlm transaction processing failed");
+                                customResponse.setLegMessage("leg misconfiguration..inspect the data below");
 
-                                JsonObject jsonObject = JsonObject.mapFrom(customResponse);
+                                TransactionRecorder recorded = redisProcessor.
+                                        findTransactionRecord(transactionId);
 
-                                future.complete(jsonObject);
+                               JsonObject object = JsonObject.mapFrom(recorded);
+
+                                finalResponseObject = JsonObject.mapFrom(customResponse);
+
+                                finalResponseObject.put("data",object);
+
+                                failedLeg = true;
+
+                             //   future.complete(jsonObject);
+                                break;
+
                             }
-
                         }else{
 
                             /**
@@ -326,19 +348,26 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
 
                             JsonObject jsonObject = JsonObject.mapFrom(customResponse);
 
-                            future.complete(jsonObject);
+                            finalResponseObject = JsonObject.mapFrom(customResponse);
+
+                        //    future.complete(jsonObject);
+
+                            break;
                         }
                     }
 
                     if (!failedLeg){
-                        JsonObject jsonObject= CREATE_LEG_RESPONSE(legConfigurationManager);
-                        jsonObject.put("legStatus",200);
-                        jsonObject.put("legMessage","leg processed successfully");
-                        future.complete(jsonObject);
+                      //  JsonObject jsonObject= CREATE_LEG_RESPONSE(legConfigurationManager);
+
+                        finalResponseObject = CREATE_LEG_RESPONSE(legConfigurationManager);
+                        finalResponseObject.put("legStatus",200);
+                        finalResponseObject.put("legMessage","leg processed successfully");
+                   //     future.complete(jsonObject);
                     }
                 }else{
-                    JsonObject jsonObject = JsonObject.mapFrom(fieldValidation);
-                    future.complete(jsonObject);
+                    finalResponseObject = JsonObject.mapFrom(fieldValidation);
+
+                 //   future.complete(jsonObject);
                 }
 
             }else{
@@ -350,9 +379,9 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
                 customResponse.setLegStatus(HttpStatus.METHOD_NOT_ALLOWED.value());
                 customResponse.setLegMessage("leg manager template not found");
 
-                JsonObject jsonObject = JsonObject.mapFrom(customResponse);
+                finalResponseObject = JsonObject.mapFrom(customResponse);
 
-                future.complete(jsonObject);
+               // future.complete(jsonObject);
             }
 
         }else{
@@ -361,9 +390,9 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
             customResponse.setLegStatus(HttpStatus.NOT_FOUND.value());
             customResponse.setLegMessage("leg manager not found");
 
-            JsonObject jsonObject = JsonObject.mapFrom(customResponse);
+            finalResponseObject = JsonObject.mapFrom(customResponse);
 
-            future.complete(jsonObject);
+          //  future.complete(jsonObject);
         }
 
         TransactionRecorder transactionRecorder = redisProcessor.findTransactionRecord(transactionId);
@@ -374,6 +403,11 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
         }catch (Exception e){
             logger.info(e.getMessage());
         }
+
+
+        future.complete(finalResponseObject);
+
+
         return future;
     }
 
@@ -536,7 +570,7 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
         for (LegRequest legRequest : legBody.getRequestFields()){
             String[] parameters = DATA_PARAMETERS(legRequest.getDataSource());
             logger.info("MAKE_SERVICE_REQUEST method execution ..3");
-            String value = RETRIEVE_DATA_STORE(parameters,dataStoreList);
+            String value = RETRIEVE_DATA_STORE_V2(parameters,dataStoreList);
 
             if ("".equals(value)){
                 okayValues = false;
@@ -650,7 +684,7 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
      */
     @Override
     public String[] DATA_PARAMETERS(String request) {
-        return request.split("__");
+        return request.split("@");
     }
 
     /***
@@ -691,8 +725,6 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
 
                 if (dataStore.getStoreId()==Integer.parseInt(stepId) &&
                         storeName.equals(dataStore.getStore())){
-
-
                     if (key.contains("$")){
                         JsonObject activeJsonObject = storeObject;
 
@@ -717,8 +749,6 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
                     }else{
                         value = String.valueOf(storeObject.getValue(key));
                     }
-
-
                 }
             }
             return value;
@@ -727,6 +757,74 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
             return "";
         }
 
+
+    }
+
+    @Override
+    public String RETRIEVE_DATA_STORE_V2(String[] parameters, List<DataStore> dataStoreList) {
+
+        if (dataStoreList.size()>0){
+
+            String stepId = parameters[1];
+            String storeName = parameters[2];
+            String key = parameters[3];
+
+            logger.info("key..."+key);
+            String value = "";
+
+            /**
+             * updated strcture
+             * @0@response@key__name,
+             * @0@response@jsonObject__objectName__key,
+             * @0@response@jsonArray__arrayName__obejctType__position__{optional for json objects}
+             */
+
+            for (DataStore dataStore : dataStoreList){
+                JsonObject storeObject = new JsonObject(dataStore.getJsonObject());
+
+                if (dataStore.getStoreId()==Integer.parseInt(stepId) &&
+                        storeName.equals(dataStore.getStore())){
+
+                    String[] key_properties_array = key.split("__");
+                    String objectType = key_properties_array[0];
+
+                    if("key".equals(objectType)){
+                        value = String.valueOf(storeObject.getValue(key_properties_array[1]));
+                    }else if ("jsonObject".equals(objectType)){
+                        String objectName = key_properties_array[1];
+                        String keyName = key_properties_array[2];
+
+                        JsonObject object = storeObject.getJsonObject(objectName);
+                        value = object.getString(keyName);
+
+                    }else if ("jsonArray".equals(objectType)){
+                        String arrayName = key_properties_array[1];
+                        String valueType = key_properties_array[2];
+                        int position = Integer.parseInt(key_properties_array[3]);
+
+                        JsonArray jsonArray = storeObject.getJsonArray(arrayName);
+                        if("jsonobject".equals(valueType.toLowerCase())){
+                            String keyName =  key_properties_array[4];
+
+                            JsonObject jsonObject = jsonArray.getJsonObject(position);
+                            value = jsonObject.getString(keyName);
+
+                        }else{
+                            value = jsonArray.getString(position);
+                        }
+                    }else{
+                        value = "";
+                    }
+
+                }
+
+            }
+
+            return value;
+        }else{
+            // TODO :: THROW EXCEPTIONS AT THIS POINT AND CATCH THEM AT THE POINT OF PROCESSIN
+            return "";
+        }
 
     }
 
@@ -745,15 +843,21 @@ public class LegProcessorImpl extends AbstractVerticle implements LegProcessor {
          */
         for (ResponseHandler responseHandler : responseHandlers){
 
+            try {
+                logger.info("response handler ..."+ new ObjectMapper().writeValueAsString(responseHandler));
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+
             boolean allMatches = true;
 
             for (Factors factors : responseHandler.getRoutingFactors()){
                 StringBuilder builder = new StringBuilder();
-                builder.append(factors.getDataSource()).append("__").append(factors.getData());
+                builder.append(factors.getDataSource()).append("@").append(factors.getData());
                 System.out.println(builder.toString());
 
                 String[] parameters =DATA_PARAMETERS(builder.toString());
-                String data = RETRIEVE_DATA_STORE(parameters,transactionRecorder.getDataStoreList());
+                String data = RETRIEVE_DATA_STORE_V2(parameters,transactionRecorder.getDataStoreList());
                 System.out.println("data.."+data+" .. value.."+factors.getValue());
                 if (!data.equals(factors.getValue())) allMatches = false;
             }

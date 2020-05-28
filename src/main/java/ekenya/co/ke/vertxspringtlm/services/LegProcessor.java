@@ -35,6 +35,7 @@ public interface LegProcessor {
 
     String[] DATA_PARAMETERS(String request);
     String RETRIEVE_DATA_STORE(String[] parameters, List<DataStore> dataStoreList);
+    String RETRIEVE_DATA_STORE_V2(String[] parameters, List<DataStore> dataStoreList);
     int GET_HANDLER_ID(List<ResponseHandler> responseHandlers, long transactionId,RedisProcessor redisProcessor);
 
     ResponseHandler GET_RESPONSE_HANDLER(int handlerId, List<ResponseHandler> handlers);

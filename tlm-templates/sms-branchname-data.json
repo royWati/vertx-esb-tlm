@@ -1,0 +1,96 @@
+{
+  "clientRequest": [
+    {
+      "originatorField": "msisdn"
+    }
+  ],
+  "body": [
+    {
+      "serviceName": "CBKL-queuamate-karatina-db@GetBranchName",
+      "stepId": 0,
+      "requestFields": [],
+      "fixedFields": [],
+      "response": {
+        "success": [
+          {
+            "routingFactors": [
+              {
+                "dataSource": "@0@response",
+                "data": "key__esbStatus",
+                "value": "200"
+              }
+            ],
+            "stepId": 1,
+            "finalLeg": false,
+            "handlerId": 1
+          }
+        ],
+        "fail": [
+          {
+            "routingFactors": null,
+            "stepId": 1,
+            "finalLeg": true,
+            "handlerId": 1
+          }
+        ]
+      }
+    },
+    {
+      "serviceName": "CBKL-sms-notification-app",
+      "stepId": 1,
+      "requestFields": [
+        {
+          "dataSource": "@0@clientRequest@key__msisdn",
+          "mappingField": "msisdn"
+        },
+        {
+          "dataSource": "@0@response@jsonArray__data__jsonObject__0__company_name",
+          "mappingField": "msg"
+        }
+      ],
+      "fixedFields": [
+        {
+          "field": "message",
+          "value": "user accessed tontinesa-api and fetched regions data"
+        }
+      ],
+      "response": {
+        "success": [
+          {
+            "routingFactors": [
+              {
+                "dataSource": "@0@response",
+                "data": "key__esbStatus",
+                "value": "200"
+              }
+            ],
+            "stepId": 1,
+            "finalLeg": true,
+            "handlerId": 1
+          }
+        ],
+        "fail": [
+          {
+            "routingFactors": [
+              {
+                "dataSource": "@0@response",
+                "data": "key__esbStatus",
+                "value": "404"
+              }
+            ],
+            "stepId": 1,
+            "finalLeg": true,
+            "handlerId": 1
+          }
+        ]
+      }
+    }
+  ],
+  "finalResponse": [],
+  "fixedFields": [
+    {
+      "field": "response",
+      "value": "the process has been successfully processed."
+    }
+  ]
+}

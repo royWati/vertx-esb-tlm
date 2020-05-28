@@ -17,7 +17,6 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LegWrapper {
-
     private LegManager legManager;
     private LegConfigurationManager configuration;
 }

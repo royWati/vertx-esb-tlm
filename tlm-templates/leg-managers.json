@@ -1,1 +1,1 @@
-[{"legname":"send-balance-inquiry-sms","startingPoint":0},{"legname":"send-calculated-sum","startingPoint":0}]
+[{"legname":"send-balance-inquiry-sms","startingPoint":0},{"legname":"send-calculated-sum","startingPoint":0},{"legname":"fetch-region-by-id","startingPoint":0},{"legname":"sms-branchname","startingPoint":0},{"legname":"send-branch-to-sms-CBKL","startingPoint":0},{"legname":"send-branch-to-sms-CBKL","startingPoint":0}]

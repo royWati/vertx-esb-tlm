@@ -1,0 +1,14 @@
+{
+  "xref":"...",
+  "txntimestamp":"...",
+  "payload":{
+    "status": 0,
+    "message": ".."
+  },
+  "data":{
+    "channel_details": {
+      },
+    "transaction_details": {
+    }
+  }
+}

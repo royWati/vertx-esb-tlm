@@ -45,6 +45,8 @@ public class TemplateConfigurationImpl extends AbstractVerticle implements Templ
 
         vertx.eventBus().consumer(CREATE_TLM_TEMPLATE,event -> {
             String s = event.body().toString();
+
+            logger.info(s);
             LegWrapper legWrapper = new Gson().fromJson(s,LegWrapper.class);
 
             Future<JsonObject> future = createTemplate(legWrapper);
